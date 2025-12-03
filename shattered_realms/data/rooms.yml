@@ -1,0 +1,22 @@
+rooms:
+  lobby:
+    name: "The Shattered Lobby"
+    description: |
+      You stand in a broad stone hall hung with torn banners.
+      The air hums faintly, as if the world itself is still booting up.
+      A dim archway leads into deeper darkness.
+
+    brief: "A rough stone hall filled with the echoes of creation."
+    exits:
+      east: antechamber
+
+  antechamber:
+    name: "Dusty Antechamber"
+    description: |
+      This cramped chamber smells of dust and old secrets.
+      Faded chalk marks scar the floor in the shapes of long-forgotten circles.
+      The lobby lies back to the west.
+
+    brief: "A cramped, dust-choked antechamber."
+    exits:
+      west: lobby
