@@ -1,7 +1,5 @@
-# shattered_realms/game/models.py
-
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 @dataclass
@@ -11,6 +9,7 @@ class Room:
     description: str
     brief: str
     exits: Dict[str, str] = field(default_factory=dict)
+    sanctuary: bool = False  # rooms can be marked as safe zones
 
 
 @dataclass
@@ -20,6 +19,20 @@ class Player:
     is_admin: bool = False  # future-proofing
 
 
+@dataclass
+class NPC:
+    id: str
+    name: str
+    description: str
+    room_id: str
+    home_id: str
+    tethered: bool = False
+    wander_mode: str = "none"  # "none", "path", "global"
+    wander_path: List[str] = field(default_factory=list)
+    wander_index: int = 0
+    aggro: int = 0  # 0–10: 0 = passive, 10 = murderhobo
+
+
 class World:
     def __init__(self):
         self.rooms: Dict[str, Room] = {}
@@ -27,6 +40,8 @@ class World:
         self.players: Dict[str, Player] = {}
         # active connections: key = lowercase player name, value = session object
         self.sessions: Dict[str, object] = {}
+        # NPCs keyed by id
+        self.npcs: Dict[str, NPC] = {}
 
     # ---- Rooms ----
     def add_room(self, room: Room) -> None:
@@ -67,3 +82,10 @@ class World:
             s for s in self.sessions.values()
             if getattr(s, "room_id", None) == room_id
         ]
+
+    # ---- NPCs ----
+    def add_npc(self, npc: NPC) -> None:
+        self.npcs[npc.id] = npc
+
+    def npcs_in_room(self, room_id: str) -> List[NPC]:
+        return [n for n in self.npcs.values() if n.room_id == room_id]

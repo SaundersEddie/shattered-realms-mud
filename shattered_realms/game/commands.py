@@ -2,7 +2,7 @@
 
 from typing import Dict, Callable, List
 
-from .models import World, Room
+from .models import World, Room, NPC
 
 # Directions & aliases
 DIRECTION_ALIASES = {
@@ -37,19 +37,26 @@ async def cmd_look(session, args: List[str]) -> None:
 
 async def _show_room_occupants(session) -> None:
     """
-    Show other players in the same room as 'Also here: ...'
+    Show other players and NPCs in the same room.
     """
-    others = []
+    # Players (other than you)
+    other_players = []
     for other in session.world.sessions_in_room(session.room_id):
         if other is session:
             continue
         if other.player is None:
             continue
-        others.append(other.player.name)
+        other_players.append(other.player.name)
 
-    if others:
-        names = ", ".join(others)
+    if other_players:
+        names = ", ".join(other_players)
         await session.send_line(f"Also here: {names}")
+
+    # NPCs
+    npcs = [n.name for n in session.world.npcs_in_room(session.room_id)]
+    if npcs:
+        names = ", ".join(npcs)
+        await session.send_line(f"You notice: {names}")
 
 async def cmd_quicklook(session, args: List[str]) -> None:
     """Brief room description (`ql`)."""
@@ -74,6 +81,14 @@ async def cmd_move(session, args: List[str], direction: str) -> None:
         return
 
     dest_id = exits[direction]
+
+    # Make sure destination room actually exists
+    try:
+        session.world.get_room(dest_id)
+    except KeyError:
+        await session.send_line("You feel resistance, as if reality hasn't fully formed that way.")
+        return
+
     name = session.player.name if session.player else "Someone"
 
     # Notify old room
@@ -82,7 +97,7 @@ async def cmd_move(session, args: List[str], direction: str) -> None:
             continue
         await other.send_line(f"{name} leaves the room.")
 
-    # Actually move
+    # Move
     session.room_id = dest_id
 
     # Notify new room
@@ -91,16 +106,9 @@ async def cmd_move(session, args: List[str], direction: str) -> None:
             continue
         await other.send_line(f"{name} enters the room.")
 
-    # Feedback to the mover
     await session.send_line(f"You go {direction}.")
     await cmd_quicklook(session, [])
 
-    dest_id = exits[direction]
-    session.room_id = dest_id
-
-    await session.send_line(f"You go {direction}.")
-    # Auto-quick-look in the new room
-    await cmd_quicklook(session, [])
 
 
 async def cmd_quit(session, args: List[str]) -> bool:

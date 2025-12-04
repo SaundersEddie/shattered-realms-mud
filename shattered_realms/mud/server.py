@@ -6,6 +6,7 @@ from typing import Optional
 from ..game.world import load_world
 from ..game.commands import handle_command, cmd_quicklook
 from ..game.models import Player
+from ..game.npcs import npc_tick
 
 
 WELCOME_BANNER = r"""
@@ -138,6 +139,17 @@ async def run_server(host: str = "0.0.0.0", port: int = 4000) -> None:
         session = ClientSession(reader, writer, world)
         await session.handle()
 
+    # Background NPC loop
+    async def _npc_loop():
+        while True:
+            try:
+                await npc_tick(world)
+            except Exception as e:
+                print(f"[NPC LOOP ERROR]: {e}")
+            await asyncio.sleep(10)  # move every 10s for now
+
+    asyncio.create_task(_npc_loop())
+
     server = await asyncio.start_server(_client_connected, host, port)
 
     sockets = ", ".join(str(sock.getsockname()) for sock in (server.sockets or []))
@@ -145,3 +157,4 @@ async def run_server(host: str = "0.0.0.0", port: int = 4000) -> None:
 
     async with server:
         await server.serve_forever()
+

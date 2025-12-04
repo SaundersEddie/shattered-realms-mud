@@ -1,12 +1,15 @@
 rooms:
+
   lobby:
     name: "The Shattered Lobby"
+    sanctuary: true
     description: |
       You stand in a broad stone hall hung with torn banners.
       The air hums faintly, as if the world itself is still booting up.
-      A dim archway leads into deeper darkness.
+      Symbols shimmer faintly along the walls—half runes, half code.
+      A dim archway leads deeper into the forming world.
 
-    brief: "A rough stone hall filled with the echoes of creation."
+    brief: "A stone hall filled with humming creation-energy."
     exits:
       east: antechamber
 
@@ -14,9 +17,62 @@ rooms:
     name: "Dusty Antechamber"
     description: |
       This cramped chamber smells of dust and old secrets.
-      Faded chalk marks scar the floor in the shapes of long-forgotten circles.
+      Faded chalk marks scar the floor in shapes of half-remembered circles.
+      Scribbled diagrams hint at old rituals—or early development notes.
       The lobby lies back to the west.
 
-    brief: "A cramped, dust-choked antechamber."
+    brief: "A cramped antechamber coated in dust and forgotten chalk."
     exits:
       west: lobby
+      south: scriptorium
+
+  scriptorium:
+    name: "Scriptorium of Echoing Ink"
+    description: |
+      Tall shelves bow under the weight of cracked tomes.
+      Quills drift lazily through the air, writing messages you can't quite read.
+      A soft scratching sound echoes with no visible source.
+      A stairway descends to the Archive Vault, and a corridor leads east.
+
+    brief: "A quiet study chamber filled with drifting quills."
+    exits:
+      north: antechamber
+      east: archive_hall
+      down: archive_vault
+
+  archive_hall:
+    name: "Hall of Fragmented Archives"
+    description: |
+      Rows of crystalline data-shards hover in midair, flickering with memories.
+      Touching one sends ripples of light racing across the hall.
+      Some shards pulse steadily; others flicker like corrupted files.
+      A passage returns west to the Scriptorium, and a ramp slopes southward.
+
+    brief: "A hall of floating memory-shards."
+    exits:
+      west: scriptorium
+      south: sanctum_gate
+
+  sanctum_gate:
+    name: "Gate of the Inner Sanctum"
+    description: |
+      A towering circular door of stone and polished bone stands before you.
+      Its surface glows with shifting sigils that feel almost alive.
+      You sense safety beyond this threshold, as if a powerful peace dwells there.
+      The Archive Hall lies to the north; the gate hints at a deeper world beyond.
+
+    brief: "A glowing circular gate humming with quiet power."
+    exits:
+      north: archive_hall
+
+  archive_vault:
+    name: "Archive Vault"
+    description: |
+      You descend into a chamber carved directly into the bedrock.
+      Heavy iron shelves line the walls, their contents wrapped in chains and seals.
+      The air is thicker here, as if sound itself moves reluctantly.
+      A narrow staircase leads back up to the Scriptorium.
+
+    brief: "A deep vault of chained and sealed archives."
+    exits:
+      up: scriptorium

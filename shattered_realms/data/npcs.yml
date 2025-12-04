@@ -1,0 +1,33 @@
+npcs:
+
+  archivist:
+    name: "Archivist Fragment"
+    description: "A translucent figure made of drifting ink and half-formed glyphs."
+    room: archive_hall
+    home: archive_hall
+    tethered: true
+    wander_mode: "none"
+    aggro: 0
+
+  glitch_wanderer:
+    name: "Glitch-Wanderer"
+    description: "A flickering silhouette that shifts between gunslinger and broken code."
+    room: antechamber
+    home: antechamber
+    tethered: false
+    wander_mode: "path"
+    wander_path:
+      - antechamber
+      - scriptorium
+      - archive_hall
+      - antechamber
+    aggro: 3
+
+  wandering_sage:
+    name: "Wandering Sage"
+    description: "A robed figure who seems equally at home in code, desert, and dream."
+    room: lobby
+    home: lobby
+    tethered: false
+    wander_mode: "global"
+    aggro: 0

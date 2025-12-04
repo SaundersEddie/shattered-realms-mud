@@ -8,14 +8,13 @@ from .models import World, Room
 
 def load_world() -> World:
     """
-    Load the world from data/rooms.yml.
+    Load the world (rooms first, then NPCs).
     """
-    # .../shattered_realms/game/world.py -> .../shattered_realms/
     base_dir = Path(__file__).resolve().parent.parent
     rooms_path = base_dir / "data" / "rooms.yml"
 
     with rooms_path.open("r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f)
+        raw = yaml.safe_load(f) or {}
 
     world = World()
 
@@ -26,7 +25,12 @@ def load_world() -> World:
             description=data.get("description", ""),
             brief=data.get("brief", data.get("name", room_id)),
             exits=data.get("exits", {}) or {},
+            sanctuary=bool(data.get("sanctuary", False)),
         )
         world.add_room(room)
+
+    # Load NPCs after rooms so their room_ids are valid
+    from .npcs import load_npcs
+    load_npcs(world)
 
     return world
