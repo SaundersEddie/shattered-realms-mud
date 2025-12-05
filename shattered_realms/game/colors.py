@@ -11,11 +11,7 @@ STYLES = {
     "banner": "\033[1;35m",       # bright magenta
 }
 
-
 def colorize(text: str, style: str, enabled: bool = True) -> str:
-    """
-    Apply an ANSI color style if enabled; otherwise return plain text.
-    """
     if not enabled:
         return text
 

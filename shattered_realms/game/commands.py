@@ -17,7 +17,6 @@ DIRECTION_ALIASES = {
 
 VALID_DIRECTIONS = {"north", "south", "east", "west", "up", "down"}
 
-
 # Session is anything with: world, room_id, send_line(str)
 def _current_room(session) -> Room:
     return session.world.get_room(session.room_id)
@@ -167,14 +166,6 @@ async def cmd_say(session, args: List[str]) -> None:
             await other.send_line(f"{colored_name} says: {msg_text}")
             
 async def cmd_color(session, args: List[str]) -> None:
-    """
-    Toggle or show ANSI color setting for this session.
-
-    Usage:
-      color        -> show current setting
-      color on     -> enable color
-      color off    -> disable color
-    """
     # No args: just show current status
     if not args:
         status = "on" if session.color_enabled else "off"
@@ -258,5 +249,3 @@ async def handle_command(session, line: str) -> bool:
         return result
 
     return True
-
-
