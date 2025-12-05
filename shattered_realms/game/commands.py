@@ -3,6 +3,7 @@
 from typing import Dict, Callable, List
 
 from .models import World, Room, NPC
+from .colors import colorize
 
 # Directions & aliases
 DIRECTION_ALIASES = {
@@ -21,20 +22,6 @@ VALID_DIRECTIONS = {"north", "south", "east", "west", "up", "down"}
 def _current_room(session) -> Room:
     return session.world.get_room(session.room_id)
 
-
-async def cmd_look(session, args: List[str]) -> None:
-    """Full room description."""
-    room = _current_room(session)
-
-    await session.send_line(room.name)
-    await session.send_line(room.description.rstrip())
-
-    # NEW: show other players
-    await _show_room_occupants(session)
-
-    exits = ", ".join(sorted(room.exits.keys())) if room.exits else "none"
-    await session.send_line(f"Exits: {exits}")
-
 async def _show_room_occupants(session) -> None:
     """
     Show other players and NPCs in the same room.
@@ -49,44 +36,73 @@ async def _show_room_occupants(session) -> None:
         other_players.append(other.player.name)
 
     if other_players:
-        names = ", ".join(other_players)
+        colored = [
+            colorize(name, "player_name", session.color_enabled)
+            for name in other_players
+        ]
+        names = ", ".join(colored)
         await session.send_line(f"Also here: {names}")
 
     # NPCs
     npcs = [n.name for n in session.world.npcs_in_room(session.room_id)]
     if npcs:
-        names = ", ".join(npcs)
+        colored = [
+            colorize(name, "npc_name", session.color_enabled)
+            for name in npcs
+        ]
+        names = ", ".join(colored)
         await session.send_line(f"You notice: {names}")
 
+async def cmd_look(session, args: List[str]) -> None:
+    """Full room description."""
+    room = _current_room(session)
+
+    room_name = colorize(room.name, "room_name", session.color_enabled)
+    await session.send_line(room_name)
+    await session.send_line(room.description.rstrip())
+
+    await _show_room_occupants(session)
+
+    exits = ", ".join(sorted(room.exits.keys())) if room.exits else "none"
+    exits_text = colorize(f"Exits: {exits}", "system", session.color_enabled)
+    await session.send_line(exits_text)
+    
 async def cmd_quicklook(session, args: List[str]) -> None:
     """Brief room description (`ql`)."""
     room = _current_room(session)
 
-    await session.send_line(room.name)
+    room_name = colorize(room.name, "room_name", session.color_enabled)
+    await session.send_line(room_name)
     await session.send_line(room.brief.rstrip())
 
-    # NEW: show other players
     await _show_room_occupants(session)
 
     exits = ", ".join(sorted(room.exits.keys())) if room.exits else "none"
-    await session.send_line(f"Exits: {exits}")
+    exits_text = colorize(f"Exits: {exits}", "system", session.color_enabled)
+    await session.send_line(exits_text)
 
 async def cmd_move(session, args: List[str], direction: str) -> None:
     """Move the player in a direction, if possible."""
     room = _current_room(session)
-    exits = room.exits
+    exits = room.exits or {}
 
     if direction not in exits:
-        await session.send_line("You can't go that way.")
+        msg = colorize("You can't go that way.", "error", session.color_enabled)
+        await session.send_line(msg)
         return
 
     dest_id = exits[direction]
 
-    # Make sure destination room actually exists
+    # Make sure the destination room actually exists.
     try:
         session.world.get_room(dest_id)
     except KeyError:
-        await session.send_line("You feel resistance, as if reality hasn't fully formed that way.")
+        msg = colorize(
+            "You feel resistance, as if reality hasn't fully formed that way.",
+            "error",
+            session.color_enabled,
+        )
+        await session.send_line(msg)
         return
 
     name = session.player.name if session.player else "Someone"
@@ -95,54 +111,95 @@ async def cmd_move(session, args: List[str], direction: str) -> None:
     for other in session.world.sessions_in_room(session.room_id):
         if other is session:
             continue
-        await other.send_line(f"{name} leaves the room.")
+        colored_name = colorize(name, "player_name", other.color_enabled)
+        await other.send_line(f"{colored_name} leaves the room.")
 
-    # Move
+    # Actually move
     session.room_id = dest_id
 
     # Notify new room
     for other in session.world.sessions_in_room(session.room_id):
         if other is session:
             continue
-        await other.send_line(f"{name} enters the room.")
+        colored_name = colorize(name, "player_name", other.color_enabled)
+        await other.send_line(f"{colored_name} enters the room.")
 
-    await session.send_line(f"You go {direction}.")
+    move_text = colorize(f"You go {direction}.", "system", session.color_enabled)
+    await session.send_line(move_text)
     await cmd_quicklook(session, [])
-
-
 
 async def cmd_quit(session, args: List[str]) -> bool:
     """Quit the game. Returns False to signal disconnect."""
-    await session.send_line("The world fades to black as you step away...")
+    msg = colorize("The world fades to black as you step away...", "system", session.color_enabled)
+    await session.send_line(msg)
     return False
 
 async def cmd_who(session, args: List[str]) -> None:
     """Show who is online."""
     players = list(session.world.players.values())
     if not players:
-        await session.send_line("You seem to be alone in these realms.")
+        msg = colorize("You seem to be alone in these realms.", "system", session.color_enabled)
+        await session.send_line(msg)
         return
 
-    await session.send_line("Players currently wandering the Shattered Realms:")
+    header = colorize("Players currently wandering the Shattered Realms:", "system", session.color_enabled)
+    await session.send_line(header)
     for p in players:
-        await session.send_line(f"  {p.name}")
+        pname = colorize(p.name, "player_name", session.color_enabled)
+        await session.send_line(f"  {pname}")
         
 async def cmd_say(session, args: List[str]) -> None:
     """Speak to everyone in the same room."""
     if not args:
-        await session.send_line("Say what?")
+        msg = colorize("Say what?", "error", session.color_enabled)
+        await session.send_line(msg)
         return
 
-    msg = " ".join(args)
+    msg_text = " ".join(args)
     name = session.player.name if session.player else "Someone"
 
-    # Send to everyone in the same room
     for other in session.world.sessions_in_room(session.room_id):
         if other is session:
-            await other.send_line(f"You say: {msg}")
+            you_line = colorize("You say:", "system", session.color_enabled)
+            await other.send_line(f"{you_line} {msg_text}")
         else:
-            await other.send_line(f"{name} says: {msg}")
+            colored_name = colorize(name, "player_name", other.color_enabled)
+            await other.send_line(f"{colored_name} says: {msg_text}")
             
+async def cmd_color(session, args: List[str]) -> None:
+    """
+    Toggle or show ANSI color setting for this session.
+
+    Usage:
+      color        -> show current setting
+      color on     -> enable color
+      color off    -> disable color
+    """
+    # No args: just show current status
+    if not args:
+        status = "on" if session.color_enabled else "off"
+        msg = f"Color is currently {status}."
+        msg = colorize(msg, "system", session.color_enabled)
+        await session.send_line(msg)
+        return
+
+    choice = args[0].lower()
+
+    if choice in ("on", "yes", "true"):
+        session.color_enabled = True
+        # Use the *new* state when colorizing
+        msg = colorize("Color has been turned on.", "system", session.color_enabled)
+        await session.send_line(msg)
+    elif choice in ("off", "no", "false"):
+        # Turn it off first, then send plain confirmation
+        session.color_enabled = False
+        # Don't color this, since color is now off
+        await session.send_line("Color has been turned off.")
+    else:
+        # Invalid usage
+        msg = colorize("Usage: color [on|off]", "error", session.color_enabled)
+        await session.send_line(msg)
+                
 # Command dispatch table
 # Handlers return:
 #   - True / None  => keep connection open
@@ -156,6 +213,7 @@ COMMANDS: Dict[str, CommandHandler] = {
     "exit": cmd_quit,
     "say": cmd_say,
     "who": cmd_who,
+    "color": cmd_color,
 }
 
 async def handle_command(session, line: str) -> bool:
@@ -165,32 +223,40 @@ async def handle_command(session, line: str) -> bool:
     Returns False if the caller should close the connection.
     """
     text = line.strip()
+
+    # Empty line: treat as quick look
     if not text:
-        # treat empty as quick look
         await cmd_quicklook(session, [])
         return True
 
     parts = text.split()
+    if not parts:
+        await cmd_quicklook(session, [])
+        return True
+
     verb = parts[0].lower()
     args = parts[1:]
 
-    # Direction shortcuts
+    # Direction shortcuts (n/s/e/w/u/d)
     if verb in DIRECTION_ALIASES:
         verb = DIRECTION_ALIASES[verb]
 
+    # Cardinal directions as movement commands
     if verb in VALID_DIRECTIONS:
         await cmd_move(session, args, verb)
         return True
 
+    # Normal command lookup
     handler = COMMANDS.get(verb)
-    if not handler:
-        await session.send_line("You mutter something unintelligible.")
+    if handler is None:
+        msg = colorize("You mutter something unintelligible.", "error", session.color_enabled)
+        await session.send_line(msg)
         return True
 
     result = await handler(session, args)
     if isinstance(result, bool):
         return result
-    return True
 
+    return True
 
 

@@ -7,6 +7,7 @@ from ..game.world import load_world
 from ..game.commands import handle_command, cmd_quicklook
 from ..game.models import Player
 from ..game.npcs import npc_tick
+from ..game.colors import colorize   # NEW
 
 
 WELCOME_BANNER = r"""
@@ -27,6 +28,7 @@ class ClientSession:
         self.writer = writer
         self.world = world
         self.player: Optional[Player] = None
+        self.color_enabled: bool = True  # NEW
 
         peer = writer.get_extra_info("peername")
         self.addr: Optional[str] = f"{peer[0]}:{peer[1]}" if peer else "unknown"
@@ -77,8 +79,8 @@ class ClientSession:
     async def handle(self) -> None:
         try:
             # Banner
-            await self.send_line(WELCOME_BANNER.strip("\n"))
-            await self.send_line("You feel a cold wind as the void takes shape around you.")
+            await self.send_line(colorize(WELCOME_BANNER.strip("\n"), "banner", self.color_enabled))
+            await self.send_line(colorize("You feel a cold wind as the void takes shape around you.", "system", self.color_enabled))
             await self.send_line("")
 
             # Ask for a name and create Player
@@ -94,7 +96,9 @@ class ClientSession:
             for other in self.world.sessions_in_room(self.room_id):
                 if other is self:
                     continue
-                await other.send_line(f"{name} enters the room.")
+                colored_name = colorize(name, "player_name", other.color_enabled)
+                await other.send_line(f"{colored_name} enters the room.")
+
 
             # Now talk to this player
             await self.send_line(f"Welcome, {player.name}.")
@@ -123,7 +127,9 @@ class ClientSession:
                 for other in self.world.sessions_in_room(self.room_id):
                     if other is self:
                         continue
-                    await other.send_line(f"{name} leaves the room.")
+                    colored_name = colorize(name, "player_name", other.color_enabled)
+                    await other.send_line(f"{colored_name} leaves the room.")
+
 
                 print(f"{self.player.name} disconnecting from {self.addr}")
                 self.world.remove_session(self.player.name)

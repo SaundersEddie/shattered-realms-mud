@@ -7,7 +7,7 @@ from typing import Dict
 import yaml
 
 from .models import World, NPC
-
+from .colors import colorize
 
 def load_npcs(world: World) -> None:
     """
@@ -111,10 +111,12 @@ async def _move_npc_to(world: World, npc: NPC, dest_id: str) -> None:
 
     # Notify old room sessions
     for session in world.sessions_in_room(old_room_id):
-        await session.send_line(f"{name} leaves the room.")
+        colored_name = colorize(name, "npc_name", session.color_enabled)
+        await session.send_line(f"{colored_name} leaves the room.")
 
     npc.room_id = dest_id
 
     # Notify new room sessions
     for session in world.sessions_in_room(npc.room_id):
-        await session.send_line(f"{name} enters the room.")
+        colored_name = colorize(name, "npc_name", session.color_enabled)
+        await session.send_line(f"{colored_name} enters the room.")
