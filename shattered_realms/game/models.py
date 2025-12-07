@@ -18,6 +18,16 @@ class Player:
     room_id: str
     role: str = "player"
     is_admin: bool = False
+    
+    # Progression
+    level: int = 1
+    xp: int = 0
+
+    # Core stats
+    max_hp: int = 20
+    hp: int = 20
+    stamina: int = 10
+    max_stamina: int = 10
 
 @dataclass
 class NPC:

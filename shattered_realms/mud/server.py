@@ -45,6 +45,16 @@ class ClientSession:
         if self.player is not None:
             self.player.room_id = value
 
+        # --- Role Helpers ---
+    def is_admin(self) -> bool:
+        return self.player and self.player.role == "admin"
+
+    def is_gm(self) -> bool:
+        return self.player and self.player.role in ("gm", "admin")
+
+    def is_wizard(self) -> bool:
+        return self.player and self.player.role in ("wizard", "gm", "admin")
+
     async def send_line(self, text: str = "") -> None:
         self.writer.write((text + "\r\n").encode("utf-8", errors="ignore"))
         await self.writer.drain()

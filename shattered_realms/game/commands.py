@@ -4,6 +4,7 @@ from typing import Dict, Callable, List
 
 from .models import World, Room, NPC
 from .colors import colorize
+from .levels import LEVEL_XP, apply_level_up
 
 # Directions & aliases
 DIRECTION_ALIASES = {
@@ -225,6 +226,43 @@ async def cmd_setrole(session, args: List[str]) -> None:
     target.role = new_role
     await session.send_line(f"Role of {target_name} set to {new_role}.")
 
+async def cmd_stats(session, args):
+    """Show your HP, stamina, level, and XP."""
+    p = session.player
+    lines = [
+        f"Name: {p.name}",
+        f"Level: {p.level}",
+        f"XP: {p.xp} / {LEVEL_XP.get(p.level+1, 'MAX')}",
+        f"Health: {p.hp} / {p.max_hp}",
+        f"Stamina: {p.stamina} / {p.max_stamina}",
+    ]
+    for line in lines:
+        await session.send_line(colorize(line, "system", session.color_enabled))
+
+async def cmd_addxp(session, args):
+    """Admin: add XP to a player. Usage: addxp <amount>"""
+    if not session.is_admin():
+        await session.send_line(colorize("No.", "error", session.color_enabled))
+        return
+
+    if not args:
+        await session.send_line("Usage: addxp <amount>")
+        return
+
+    try:
+        amount = int(args[0])
+    except ValueError:
+        await session.send_line("XP must be a number.")
+        return
+
+    player = session.player
+    player.xp += amount
+    apply_level_up(player)
+
+    await session.send_line(
+        colorize(f"Gave {amount} XP. You are now level {player.level}.", "system", session.color_enabled)
+    )
+
 # Command dispatch table
 # Handlers return:
 #   - True / None  => keep connection open
@@ -241,6 +279,8 @@ COMMANDS: Dict[str, CommandHandler] = {
     "color": cmd_color,
     "role": cmd_role,
     "setrole": cmd_setrole,
+    "stats": cmd_stats,
+    "addxp": cmd_addxp,
 }
 
 async def handle_command(session, line: str) -> bool:
