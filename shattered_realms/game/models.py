@@ -16,8 +16,8 @@ class Room:
 class Player:
     name: str
     room_id: str
-    is_admin: bool = False  # future-proofing
-
+    role: str = "player"
+    is_admin: bool = False
 
 @dataclass
 class NPC:

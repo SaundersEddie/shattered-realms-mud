@@ -120,3 +120,4 @@ async def _move_npc_to(world: World, npc: NPC, dest_id: str) -> None:
     for session in world.sessions_in_room(npc.room_id):
         colored_name = colorize(name, "npc_name", session.color_enabled)
         await session.send_line(f"{colored_name} enters the room.")
+

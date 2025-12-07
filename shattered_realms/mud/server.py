@@ -86,6 +86,9 @@ class ClientSession:
             # Ask for a name and create Player
             name = await self._ask_name()
             player = Player(name=name, room_id="lobby")
+            # Temporary: assign Admin powers to Eddie only
+            if name.lower() in ("eddie", "mr_yt", "mryt"):   # choose the ones you want
+                player.role = "admin"
             self.player = player
             self.world.add_player(player)
             self.world.add_session(player.name, self)
@@ -137,6 +140,16 @@ class ClientSession:
 
             self.writer.close()
             await self.writer.wait_closed()
+            
+        def is_admin(self) -> bool:
+            return self.player and self.player.role == "admin"
+
+        def is_gm(self) -> bool:
+            return self.player and self.player.role in ("gm", "admin")
+
+        def is_wizard(self) -> bool:
+            return self.player and self.player.role in ("wizard", "gm", "admin")
+
 
 async def run_server(host: str = "0.0.0.0", port: int = 4000) -> None:
     world = load_world()
@@ -160,6 +173,7 @@ async def run_server(host: str = "0.0.0.0", port: int = 4000) -> None:
 
     sockets = ", ".join(str(sock.getsockname()) for sock in (server.sockets or []))
     print(f"Shattered Realms listening on {sockets} (connect via nc/telnet)")
+
 
     async with server:
         await server.serve_forever()

@@ -190,7 +190,41 @@ async def cmd_color(session, args: List[str]) -> None:
         # Invalid usage
         msg = colorize("Usage: color [on|off]", "error", session.color_enabled)
         await session.send_line(msg)
-                
+
+async def cmd_role(session, args: List[str]) -> None:
+    """Show your current role."""
+    role = session.player.role if session.player else "unknown"
+    msg = colorize(f"Your role is: {role}", "system", session.color_enabled)
+    await session.send_line(msg)
+
+async def cmd_setrole(session, args: List[str]) -> None:
+    """Admin command: setrole <player> <role>"""
+    if not session.is_admin():
+        msg = colorize("You lack the authority to reshape destiny.", "error", session.color_enabled)
+        await session.send_line(msg)
+        return
+
+    if len(args) != 2:
+        await session.send_line("Usage: setrole <name> <role>")
+        return
+
+    target_name, new_role = args
+    new_role = new_role.lower()
+
+    if new_role not in ("player", "wizard", "gm", "admin"):
+        await session.send_line("Invalid role. Choose: player, wizard, gm, admin.")
+        return
+
+    # Find the player in world.players
+    key = target_name.lower()
+    target = session.world.players.get(key)
+    if not target:
+        await session.send_line(f"No such player: {target_name}")
+        return
+
+    target.role = new_role
+    await session.send_line(f"Role of {target_name} set to {new_role}.")
+
 # Command dispatch table
 # Handlers return:
 #   - True / None  => keep connection open
@@ -205,6 +239,8 @@ COMMANDS: Dict[str, CommandHandler] = {
     "say": cmd_say,
     "who": cmd_who,
     "color": cmd_color,
+    "role": cmd_role,
+    "setrole": cmd_setrole,
 }
 
 async def handle_command(session, line: str) -> bool:
