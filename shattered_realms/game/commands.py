@@ -275,6 +275,56 @@ async def cmd_addxp(session, args):
         colorize(f"Gave {amount} XP. You are now level {player.level}.", "system", session.color_enabled)
     )
 
+async def cmd_killnpc(session, args: List[str]) -> None:
+    """
+    Admin-only: remove an NPC from the world.
+    Usage: killnpc <id-or-name-prefix>
+    """
+    if not session.is_admin():
+        msg = colorize("Only a true Admin can rewrite legends.", "error", session.color_enabled)
+        await session.send_line(msg)
+        return
+
+    if not args:
+        await session.send_line("Usage: killnpc <id-or-name-prefix>")
+        return
+
+    target_arg = " ".join(args).lower()
+
+    # Try match by id first
+    world = session.world
+    target_npc = None
+
+    if target_arg in world.npcs:
+        target_npc = world.npcs[target_arg]
+    else:
+        # Fallback: prefix match on name
+        for npc in world.npcs.values():
+            if npc.name.lower().startswith(target_arg):
+                target_npc = npc
+                break
+
+    if not target_npc:
+        await session.send_line(f"No NPC found matching '{target_arg}'.")
+        return
+
+    # Lore note for Chuck
+    if target_npc.invulnerable and target_npc.id != "chuck_norris":
+        # You *could* block this too, but we’ll just log it for now
+        pass
+
+    # Announce in the room, then remove
+    room_id = target_npc.room_id
+    name_c = colorize(target_npc.name, "npc_name", session.color_enabled)
+
+    for other in world.sessions_in_room(room_id):
+        await other.send_line(f"{name_c} flickers and vanishes from the realm.")
+
+    # Actually remove him from the world
+    world.npcs.pop(target_npc.id, None)
+
+    await session.send_line(f"{target_npc.name} has been removed from the Shattered Realms.")
+
 async def _look_target(session, target: str) -> None:
     """
     Handle 'look <target>' for NPCs and players in the current room.
@@ -369,6 +419,7 @@ COMMANDS: Dict[str, CommandHandler] = {
     "setrole": cmd_setrole,
     "stats": cmd_stats,
     "addxp": cmd_addxp,
+    "killnpc": cmd_killnpc,
 }
 
 async def handle_command(session, line: str) -> bool:

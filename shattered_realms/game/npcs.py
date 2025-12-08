@@ -28,18 +28,23 @@ def load_npcs(world: World) -> None:
         if not room_id:
             continue  # must have a starting room
 
-        npc = NPC(
-            id=npc_id,
-            name=data.get("name", npc_id),
-            description=data.get("description", ""),
-            room_id=room_id,
-            home_id=data.get("home", room_id),
-            tethered=bool(data.get("tethered", False)),
-            wander_mode=data.get("wander_mode", "none"),
-            wander_path=data.get("wander_path", []) or [],
-            aggro=int(data.get("aggro", 0)),
-        )
-        world.add_npc(npc)
+    npc = NPC(
+        id=npc_id,
+        name=data.get("name", npc_id),
+        description=data.get("description", ""),
+        room_id=room_id,
+        home_id=data.get("home", room_id),
+        tethered=bool(data.get("tethered", False)),
+        wander_mode=data.get("wander_mode", "none"),
+        wander_path=data.get("wander_path", []) or [],
+        aggro=int(data.get("aggro", 0)),
+        level=int(data.get("level", 1)),
+        max_hp=int(data.get("max_hp", 10)),
+        hp=int(data.get("hp", data.get("max_hp", 10))),
+        invulnerable=bool(data.get("invulnerable", False)),  # 👈 NEW
+    )
+    
+    world.add_npc(npc)
 
 
 async def npc_tick(world: World) -> None:

@@ -41,7 +41,7 @@ class NPC:
     wander_path: List[str] = field(default_factory=list)
     wander_index: int = 0
     aggro: int = 0  # 0–10: 0 = passive, 10 = murderhobo
-
+    invulnerable: bool = False 
 
 class World:
     def __init__(self):

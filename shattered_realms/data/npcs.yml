@@ -165,3 +165,5 @@ npcs:
     level: 99
     max_hp: 999999999
     hp: 999999999
+    invulnerable: true
+    
