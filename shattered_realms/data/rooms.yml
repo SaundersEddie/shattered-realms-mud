@@ -64,6 +64,7 @@ rooms:
     brief: "A glowing circular gate humming with quiet power."
     exits:
       north: archive_hall
+      south: dustworn_crossroads
 
   archive_vault:
     name: "Archive Vault"
@@ -76,3 +77,93 @@ rooms:
     brief: "A deep vault of chained and sealed archives."
     exits:
       up: scriptorium
+
+  dustworn_crossroads:
+    name: "Dustworn Crossroads"
+    description: |
+      A battered wooden signpost stands at the heart of the crossroads, its arrows faded by sun and time.
+      Dust devils twist lazily across the cracked earth, each one whispering hints of lost voices.
+      Tracks lead in every direction—bootprints, hooves, and shapes you’d rather not identify.
+      Behind you, the strange glow of the Inner Sanctum flickers faintly through the dust-haze.
+
+    brief: "A weather-beaten crossroads carved by countless travelers."
+    exits:
+      north: sanctum_gate
+      south: old_well
+
+  old_well:
+    name: "The Old Well"
+    description: |
+      A stone well rises from the ground like the spine of some buried giant.
+      A frayed rope dangles into the darkness, swaying even without wind.
+      Someone—or something—has carved tally marks into the stones.
+      Faint echoes drift up from below, half water, half whispers.
+
+    brief: "A lonely stone well with an unsettling air."
+    exits:
+      north: dustworn_crossroads
+      south: frontier_saloon
+
+  frontier_saloon:
+    name: "Frontier Saloon"
+    description: |
+      Warm lantern light spills through slatted windows, illuminating dust motes like drifting fireflies.
+      The bar counter is carved with runes and old knife marks.
+      A player piano in the corner wheezes out the broken remains of a tune, stopping whenever you look at it.
+      Empty chairs sit as if waiting for a crowd that never quite arrives.
+
+    brief: "A dim saloon warmed by lantern glow and bad decisions."
+    exits:
+      north: old_well
+      east: sheriffs_office
+      south: boot_hill
+
+  sheriffs_office:
+    name: "Sheriff’s Office"
+    description: |
+      The sheriff’s desk is buried under wanted posters—some human, some definitely not.
+      A single barred cell sits in the back, its door slightly ajar.
+      A badge hangs on a nail, tarnished but still proud.
+      A chalkboard on the wall lists names and debts, many smudged away.
+
+    brief: "A cluttered office filled with law… or what's left of it."
+    exits:
+      west: frontier_saloon
+
+  boot_hill:
+    name: "Boot Hill"
+    description: |
+      Rough wooden grave markers jut from the dry ground at odd angles.
+      Wind whistles through their cracks, producing a mournful, almost musical howl.
+      Fresh tracks—clawed and bipedal—circle one grave in particular.
+      A few markers have symbols instead of names, as if the dead defied being written down.
+
+    brief: "A lonely hill dotted with forgotten graves."
+    exits:
+      north: frontier_saloon
+      east: coyote_ridge
+      south: drywind_gate
+
+  coyote_ridge:
+    name: "Coyote Ridge"
+    description: |
+      The ridge overlooks miles of shimmering desert.
+      Strange coyotes made of smoke dart between the rocks, leaving trails that fade instantly.
+      A single thorn tree stands defiantly at the peak, its branches hung with small bone totems.
+      Every now and then, a distant howl glitches into something almost like static.
+
+    brief: "A rocky ridge haunted by smoky coyotes."
+    exits:
+      west: boot_hill
+
+  drywind_gate:
+    name: "Drywind Gate"
+    description: |
+      Twin stone pillars flank a rusted iron gate, its hinges groaning with the weight of centuries.
+      Beyond lies only heat-haze and the promise of danger.
+      Someone has painted the words “TURN BACK FOOL” in flaking red letters.
+      A cold gust squeezes through the bars, carrying the scent of storms and gunpowder.
+
+    brief: "A crumbling gate marking the edge of the known frontier."
+    exits:
+      north: boot_hill
