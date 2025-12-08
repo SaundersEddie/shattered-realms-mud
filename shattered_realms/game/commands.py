@@ -44,14 +44,16 @@ async def _show_room_occupants(session) -> None:
         await session.send_line(f"Also here: {names}")
 
     # NPCs
-    npcs = [n.name for n in session.world.npcs_in_room(session.room_id)]
+    npcs = session.world.npcs_in_room(session.room_id)
     if npcs:
-        colored = [
-            colorize(name, "npc_name", session.color_enabled)
-            for name in npcs
-        ]
-        names = ", ".join(colored)
-        await session.send_line(f"You notice: {names}")
+        await session.send_line(colorize("You notice:", "system", session.color_enabled))
+        for npc in npcs:
+            name_c = colorize(npc.name, "npc_name", session.color_enabled)
+            if getattr(npc, "description", None):
+                await session.send_line(f"  {name_c} — {npc.description}")
+            else:
+                await session.send_line(f"  {name_c}")
+
 
 async def cmd_look(session, args: List[str]) -> None:
     """Full room description."""
@@ -63,9 +65,10 @@ async def cmd_look(session, args: List[str]) -> None:
 
     await _show_room_occupants(session)
 
-    exits = ", ".join(sorted(room.exits.keys())) if room.exits else "none"
-    exits_text = colorize(f"Exits: {exits}", "system", session.color_enabled)
-    await session.send_line(exits_text)
+   # Pretty exit formatting
+    for line in format_exits(session, room):
+        await session.send_line(line)
+
     
 async def cmd_quicklook(session, args: List[str]) -> None:
     """Brief room description (`ql`)."""
@@ -77,9 +80,10 @@ async def cmd_quicklook(session, args: List[str]) -> None:
 
     await _show_room_occupants(session)
 
-    exits = ", ".join(sorted(room.exits.keys())) if room.exits else "none"
-    exits_text = colorize(f"Exits: {exits}", "system", session.color_enabled)
-    await session.send_line(exits_text)
+    # Pretty exit formatting
+    for line in format_exits(session, room):
+        await session.send_line(line)
+
 
 async def cmd_move(session, args: List[str], direction: str) -> None:
     """Move the player in a direction, if possible."""
@@ -262,6 +266,32 @@ async def cmd_addxp(session, args):
     await session.send_line(
         colorize(f"Gave {amount} XP. You are now level {player.level}.", "system", session.color_enabled)
     )
+
+def format_exits(session, room: Room) -> List[str]:
+    """
+    Returns a list of lines showing exits in a nice formatted way:
+        Exits:
+          East → Dusty Antechamber
+    """
+    if not room.exits:
+        return [colorize("Exits: none", "system", session.color_enabled)]
+
+    lines = [colorize("Exits:", "system", session.color_enabled)]
+
+    for direction in sorted(room.exits.keys()):
+        dest_id = room.exits[direction]
+        try:
+            dest_room = session.world.get_room(dest_id)
+            dest_name = dest_room.name
+        except KeyError:
+            dest_name = "(unknown)"
+
+        dir_c = colorize(direction.capitalize(), "player_name", session.color_enabled)
+        name_c = colorize(dest_name, "room_name", session.color_enabled)
+
+        lines.append(f"  {dir_c} → {name_c}")
+
+    return lines
 
 # Command dispatch table
 # Handlers return:
