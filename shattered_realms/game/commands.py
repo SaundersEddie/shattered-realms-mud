@@ -56,7 +56,14 @@ async def _show_room_occupants(session) -> None:
 
 
 async def cmd_look(session, args: List[str]) -> None:
-    """Full room description."""
+    """Full room description or 'look <target>'."""
+    # If there's a target, delegate to _look_target
+    if args:
+        target = " ".join(args)
+        await _look_target(session, target)
+        return
+
+    # Normal room look
     room = _current_room(session)
 
     room_name = colorize(room.name, "room_name", session.color_enabled)
@@ -65,9 +72,10 @@ async def cmd_look(session, args: List[str]) -> None:
 
     await _show_room_occupants(session)
 
-   # Pretty exit formatting
+    # Pretty exit formatting
     for line in format_exits(session, room):
         await session.send_line(line)
+
 
     
 async def cmd_quicklook(session, args: List[str]) -> None:
@@ -266,6 +274,56 @@ async def cmd_addxp(session, args):
     await session.send_line(
         colorize(f"Gave {amount} XP. You are now level {player.level}.", "system", session.color_enabled)
     )
+
+async def _look_target(session, target: str) -> None:
+    """
+    Handle 'look <target>' for NPCs and players in the current room.
+    """
+    target_l = target.lower().strip()
+    if not target_l:
+        await cmd_look(session, [])
+        return
+
+    room_id = session.room_id
+
+    # 1) Check NPCs in the room
+    npcs = session.world.npcs_in_room(room_id)
+    for npc in npcs:
+        if npc.name.lower().startswith(target_l):
+            name_c = colorize(npc.name, "npc_name", session.color_enabled)
+            await session.send_line(name_c)
+            if getattr(npc, "description", None):
+                await session.send_line(npc.description)
+            # Optional: show basic stats if present
+            if hasattr(npc, "level") or hasattr(npc, "hp"):
+                parts = []
+                if hasattr(npc, "level"):
+                    parts.append(f"Level {getattr(npc, 'level')}")
+                if hasattr(npc, "hp") and hasattr(npc, "max_hp"):
+                    parts.append(f"Health: {npc.hp}/{npc.max_hp}")
+                if parts:
+                    await session.send_line(colorize("  " + " | ".join(parts), "system", session.color_enabled))
+            return
+
+    # 2) Check other players in the room
+    for other in session.world.sessions_in_room(room_id):
+        if other is session:
+            continue
+        if not other.player:
+            continue
+        if other.player.name.lower().startswith(target_l):
+            pname_c = colorize(other.player.name, "player_name", session.color_enabled)
+            await session.send_line(pname_c)
+            # Simple player info for now
+            p = other.player
+            line = f"Level {p.level} {p.role}"
+            await session.send_line(colorize(line, "system", session.color_enabled))
+            return
+
+    # If nothing matched
+    msg = colorize("You don't see that here.", "error", session.color_enabled)
+    await session.send_line(msg)
+
 
 def format_exits(session, room: Room) -> List[str]:
     """
