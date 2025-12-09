@@ -2,9 +2,12 @@
 
 from typing import Dict, Callable, List
 
-from .models import World, Room, NPC
+from .models import World, Room
 from .colors import colorize
-from .levels import LEVEL_XP, apply_level_up
+from .admincommands import ADMIN_COMMANDS
+from .wizcommands import WIZ_COMMANDS
+
+CommandHandler = Callable[[object, List[str]], object]
 
 # Directions & aliases
 DIRECTION_ALIASES = {
@@ -18,42 +21,7 @@ DIRECTION_ALIASES = {
 
 VALID_DIRECTIONS = {"north", "south", "east", "west", "up", "down"}
 
-# Session is anything with: world, room_id, send_line(str)
-def _current_room(session) -> Room:
-    return session.world.get_room(session.room_id)
-
-async def _show_room_occupants(session) -> None:
-    """
-    Show other players and NPCs in the same room.
-    """
-    # Players (other than you)
-    other_players = []
-    for other in session.world.sessions_in_room(session.room_id):
-        if other is session:
-            continue
-        if other.player is None:
-            continue
-        other_players.append(other.player.name)
-
-    if other_players:
-        colored = [
-            colorize(name, "player_name", session.color_enabled)
-            for name in other_players
-        ]
-        names = ", ".join(colored)
-        await session.send_line(f"Also here: {names}")
-
-    # NPCs
-    npcs = session.world.npcs_in_room(session.room_id)
-    if npcs:
-        await session.send_line(colorize("You notice:", "system", session.color_enabled))
-        for npc in npcs:
-            name_c = colorize(npc.name, "npc_name", session.color_enabled)
-            if getattr(npc, "description", None):
-                await session.send_line(f"  {name_c} — {npc.description}")
-            else:
-                await session.send_line(f"  {name_c}")
-
+# Player Commands
 
 async def cmd_look(session, args: List[str]) -> None:
     """Full room description or 'look <target>'."""
@@ -76,8 +44,6 @@ async def cmd_look(session, args: List[str]) -> None:
     for line in format_exits(session, room):
         await session.send_line(line)
 
-
-    
 async def cmd_quicklook(session, args: List[str]) -> None:
     """Brief room description (`ql`)."""
     room = _current_room(session)
@@ -91,7 +57,6 @@ async def cmd_quicklook(session, args: List[str]) -> None:
     # Pretty exit formatting
     for line in format_exits(session, room):
         await session.send_line(line)
-
 
 async def cmd_move(session, args: List[str], direction: str) -> None:
     """Move the player in a direction, if possible."""
@@ -146,19 +111,6 @@ async def cmd_quit(session, args: List[str]) -> bool:
     await session.send_line(msg)
     return False
 
-async def cmd_who(session, args: List[str]) -> None:
-    """Show who is online."""
-    players = list(session.world.players.values())
-    if not players:
-        msg = colorize("You seem to be alone in these realms.", "system", session.color_enabled)
-        await session.send_line(msg)
-        return
-
-    header = colorize("Players currently wandering the Shattered Realms:", "system", session.color_enabled)
-    await session.send_line(header)
-    for p in players:
-        pname = colorize(p.name, "player_name", session.color_enabled)
-        await session.send_line(f"  {pname}")
         
 async def cmd_say(session, args: List[str]) -> None:
     """Speak to everyone in the same room."""
@@ -177,7 +129,21 @@ async def cmd_say(session, args: List[str]) -> None:
         else:
             colored_name = colorize(name, "player_name", other.color_enabled)
             await other.send_line(f"{colored_name} says: {msg_text}")
-            
+
+async def cmd_who(session, args: List[str]) -> None:
+    """Show who is online."""
+    players = list(session.world.players.values())
+    if not players:
+        msg = colorize("You seem to be alone in these realms.", "system", session.color_enabled)
+        await session.send_line(msg)
+        return
+
+    header = colorize("Players currently wandering the Shattered Realms:", "system", session.color_enabled)
+    await session.send_line(header)
+    for p in players:
+        pname = colorize(p.name, "player_name", session.color_enabled)
+        await session.send_line(f"  {pname}")
+
 async def cmd_color(session, args: List[str]) -> None:
     # No args: just show current status
     if not args:
@@ -204,40 +170,6 @@ async def cmd_color(session, args: List[str]) -> None:
         msg = colorize("Usage: color [on|off]", "error", session.color_enabled)
         await session.send_line(msg)
 
-async def cmd_role(session, args: List[str]) -> None:
-    """Show your current role."""
-    role = session.player.role if session.player else "unknown"
-    msg = colorize(f"Your role is: {role}", "system", session.color_enabled)
-    await session.send_line(msg)
-
-async def cmd_setrole(session, args: List[str]) -> None:
-    """Admin command: setrole <player> <role>"""
-    if not session.is_admin():
-        msg = colorize("You lack the authority to reshape destiny.", "error", session.color_enabled)
-        await session.send_line(msg)
-        return
-
-    if len(args) != 2:
-        await session.send_line("Usage: setrole <name> <role>")
-        return
-
-    target_name, new_role = args
-    new_role = new_role.lower()
-
-    if new_role not in ("player", "wizard", "gm", "admin"):
-        await session.send_line("Invalid role. Choose: player, wizard, gm, admin.")
-        return
-
-    # Find the player in world.players
-    key = target_name.lower()
-    target = session.world.players.get(key)
-    if not target:
-        await session.send_line(f"No such player: {target_name}")
-        return
-
-    target.role = new_role
-    await session.send_line(f"Role of {target_name} set to {new_role}.")
-
 async def cmd_stats(session, args):
     """Show your HP, stamina, level, and XP."""
     p = session.player
@@ -251,79 +183,50 @@ async def cmd_stats(session, args):
     for line in lines:
         await session.send_line(colorize(line, "system", session.color_enabled))
 
-async def cmd_addxp(session, args):
-    """Admin: add XP to a player. Usage: addxp <amount>"""
-    if not session.is_admin():
-        await session.send_line(colorize("No.", "error", session.color_enabled))
-        return
+async def cmd_role(session, args: List[str]) -> None:
+    """Show your current role."""
+    role = session.player.role if session.player else "unknown"
+    msg = colorize(f"Your role is: {role}", "system", session.color_enabled)
+    await session.send_line(msg)
 
-    if not args:
-        await session.send_line("Usage: addxp <amount>")
-        return
+# End Player Commands
 
-    try:
-        amount = int(args[0])
-    except ValueError:
-        await session.send_line("XP must be a number.")
-        return
+# Helper Functions
 
-    player = session.player
-    player.xp += amount
-    apply_level_up(player)
+def _current_room(session) -> Room:
+    return session.world.get_room(session.room_id)
 
-    await session.send_line(
-        colorize(f"Gave {amount} XP. You are now level {player.level}.", "system", session.color_enabled)
-    )
-
-async def cmd_killnpc(session, args: List[str]) -> None:
+async def _show_room_occupants(session) -> None:
     """
-    Admin-only: remove an NPC from the world.
-    Usage: killnpc <id-or-name-prefix>
+    Show other players and NPCs in the same room.
     """
-    if not session.is_admin():
-        msg = colorize("Only a true Admin can rewrite legends.", "error", session.color_enabled)
-        await session.send_line(msg)
-        return
+    # Players (other than you)
+    other_players = []
+    for other in session.world.sessions_in_room(session.room_id):
+        if other is session:
+            continue
+        if other.player is None:
+            continue
+        other_players.append(other.player.name)
 
-    if not args:
-        await session.send_line("Usage: killnpc <id-or-name-prefix>")
-        return
+    if other_players:
+        colored = [
+            colorize(name, "player_name", session.color_enabled)
+            for name in other_players
+        ]
+        names = ", ".join(colored)
+        await session.send_line(f"Also here: {names}")
 
-    target_arg = " ".join(args).lower()
-
-    # Try match by id first
-    world = session.world
-    target_npc = None
-
-    if target_arg in world.npcs:
-        target_npc = world.npcs[target_arg]
-    else:
-        # Fallback: prefix match on name
-        for npc in world.npcs.values():
-            if npc.name.lower().startswith(target_arg):
-                target_npc = npc
-                break
-
-    if not target_npc:
-        await session.send_line(f"No NPC found matching '{target_arg}'.")
-        return
-
-    # Lore note for Chuck
-    if target_npc.invulnerable and target_npc.id != "chuck_norris":
-        # You *could* block this too, but we’ll just log it for now
-        pass
-
-    # Announce in the room, then remove
-    room_id = target_npc.room_id
-    name_c = colorize(target_npc.name, "npc_name", session.color_enabled)
-
-    for other in world.sessions_in_room(room_id):
-        await other.send_line(f"{name_c} flickers and vanishes from the realm.")
-
-    # Actually remove him from the world
-    world.npcs.pop(target_npc.id, None)
-
-    await session.send_line(f"{target_npc.name} has been removed from the Shattered Realms.")
+    # NPCs
+    npcs = session.world.npcs_in_room(session.room_id)
+    if npcs:
+        await session.send_line(colorize("You notice:", "system", session.color_enabled))
+        for npc in npcs:
+            name_c = colorize(npc.name, "npc_name", session.color_enabled)
+            if getattr(npc, "description", None):
+                await session.send_line(f"  {name_c}, {npc.description}")
+            else:
+                await session.send_line(f"  {name_c}")
 
 async def _look_target(session, target: str) -> None:
     """
@@ -374,12 +277,11 @@ async def _look_target(session, target: str) -> None:
     msg = colorize("You don't see that here.", "error", session.color_enabled)
     await session.send_line(msg)
 
-
 def format_exits(session, room: Room) -> List[str]:
     """
     Returns a list of lines showing exits in a nice formatted way:
         Exits:
-          East → Dusty Antechamber
+          East -> Dusty Antechamber
     """
     if not room.exits:
         return [colorize("Exits: none", "system", session.color_enabled)]
@@ -397,9 +299,11 @@ def format_exits(session, room: Room) -> List[str]:
         dir_c = colorize(direction.capitalize(), "player_name", session.color_enabled)
         name_c = colorize(dest_name, "room_name", session.color_enabled)
 
-        lines.append(f"  {dir_c} → {name_c}")
+        lines.append(f"  {dir_c} -> {name_c}")
 
     return lines
+
+# End Helper Functions
 
 # Command dispatch table
 # Handlers return:
@@ -407,7 +311,7 @@ def format_exits(session, room: Room) -> List[str]:
 #   - False        => server will close connection
 CommandHandler = Callable[[object, List[str]], object]
 
-COMMANDS: Dict[str, CommandHandler] = {
+BASE_COMMANDS: Dict[str, CommandHandler] = {
     "look": cmd_look,
     "ql": cmd_quicklook,
     "quit": cmd_quit,
@@ -415,12 +319,15 @@ COMMANDS: Dict[str, CommandHandler] = {
     "say": cmd_say,
     "who": cmd_who,
     "color": cmd_color,
-    "role": cmd_role,
-    "setrole": cmd_setrole,
     "stats": cmd_stats,
-    "addxp": cmd_addxp,
-    "killnpc": cmd_killnpc,
+    "role": cmd_role,
 }
+COMMANDS: Dict[str, CommandHandler] = {
+    **BASE_COMMANDS,
+    **WIZ_COMMANDS,
+    **ADMIN_COMMANDS,
+}
+
 
 async def handle_command(session, line: str) -> bool:
     """
