@@ -1,6 +1,7 @@
 # shattered_realms/mud/server.py
 
 import asyncio
+import textwrap
 from typing import Optional
 
 from ..game.world import load_world
@@ -22,6 +23,46 @@ class ClientSession:
     Represents a single connected client.
     Knows its Player and current room (via Player.room_id).
     """
+
+    # --- Output helpers ---
+
+    def _sanitize(self, text: str) -> str:
+        """
+        Replace fancy Unicode punctuation with plain ASCII so Windows / old
+        telnet clients don't puke out ΓÇö and friends.
+        """
+        replacements = {
+            "—": "--",
+            "–": "-",
+            "…": "...",
+            "’": "'",
+            "‘": "'",
+            "“": '"',
+            "”": '"',
+        }
+        for bad, good in replacements.items():
+            text = text.replace(bad, good)
+        return text
+
+    def _wrap(self, text: str, width: int = 78) -> str:
+        """
+        Hard-wrap text to a fixed width, preserving explicit newlines.
+        Each input line may turn into multiple output lines.
+        """
+        lines_out: list[str] = []
+        # Preserve explicit line breaks coming from descriptions, etc.
+        for raw_line in text.splitlines() or [""]:
+            line = raw_line.rstrip("\r")
+            if not line:
+                lines_out.append("")
+                continue
+            wrapped = textwrap.wrap(line, width=width)
+            if wrapped:
+                lines_out.extend(wrapped)
+            else:
+                lines_out.append("")
+        return "\n".join(lines_out)
+
 
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, world):
         self.reader = reader
@@ -56,8 +97,23 @@ class ClientSession:
         return self.player and self.player.role in ("wizard", "gm", "admin")
 
     async def send_line(self, text: str = "") -> None:
-        self.writer.write((text + "\r\n").encode("utf-8", errors="ignore"))
+        """
+        Send one logical line (which may be wrapped into several physical lines)
+        to the client, with CRLF line endings.
+        """
+        if text is None:
+            text = ""
+
+        # Normalize punctuation and wrap for safer display on Windows terminals.
+        safe = self._sanitize(text)
+        wrapped = self._wrap(safe)
+
+        # wrapped may contain internal newlines; send each as its own CRLF line.
+        for line in wrapped.splitlines() or [""]:
+            self.writer.write((line + "\r\n").encode("utf-8", errors="ignore"))
+
         await self.writer.drain()
+
 
     async def _ask_name(self) -> str:
         """

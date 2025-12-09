@@ -4,6 +4,7 @@ from typing import Dict, Callable, List
 
 from .models import World, Room
 from .colors import colorize
+from .levels import LEVEL_XP
 from .admincommands import ADMIN_COMMANDS
 from .wizcommands import WIZ_COMMANDS
 
