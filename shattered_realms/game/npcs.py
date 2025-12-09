@@ -41,7 +41,7 @@ def load_npcs(world: World) -> None:
         level=int(data.get("level", 1)),
         max_hp=int(data.get("max_hp", 10)),
         hp=int(data.get("hp", data.get("max_hp", 10))),
-        invulnerable=bool(data.get("invulnerable", False)),  # 👈 NEW
+        invulnerable=bool(data.get("invulnerable", False)),
     )
     
     world.add_npc(npc)
